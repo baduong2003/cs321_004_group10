@@ -2,7 +2,7 @@ package book;
 
 import java.time.LocalDate;
 
-public class Books {
+public class Book {
     private String title;
     private String author;
     private String content;
