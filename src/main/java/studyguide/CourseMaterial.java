@@ -2,6 +2,7 @@ package studyguide;
 
 import book.Book;
 import book.Chapter;
+import note.ClassNote;
 
 public class CourseMaterial {
 
@@ -9,6 +10,7 @@ public class CourseMaterial {
     private MaterialType type;
     private String rawText;
     private Book book; // Holds the Book when type == MaterialType.BOOK
+    private ClassNote note; // Holds the Note when type == MaterialType.LECTURE_NOTES
 
     /**
      * Constructor 1: Create CourseMaterial directly from a Book object.
@@ -20,6 +22,19 @@ public class CourseMaterial {
         this.book = book;
         this.title = book.getTitle();
         this.type = MaterialType.BOOK;
+        this.rawText = "";
+    }
+
+    /**
+     * Constructor 2: Create CourseMaterial directly from a ClassNote object.
+     */
+    public CourseMaterial(ClassNote note) {
+        if (note == null) {
+            throw new IllegalArgumentException("Note cannot be null.");
+        }
+        this.note = note;
+        this.title = note.getTitle();
+        this.type = MaterialType.LECTURE_NOTES;
         this.rawText = "";
     }
 
