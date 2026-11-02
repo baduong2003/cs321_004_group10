@@ -1,0 +1,5 @@
+Operating systems manage computer resources.
+Operating systems manage memory and processes.
+Operating systems manage files and system resources.
+Memory management is important for operating systems.
+Processes are managed by operating systems.
