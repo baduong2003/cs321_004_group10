@@ -1,8 +1,6 @@
-package java.studyguide;
+package studyguide;
 
 import org.junit.jupiter.api.Test;
-import studyguide.MaterialParser;
-import studyguide.ConceptIdentifier;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
