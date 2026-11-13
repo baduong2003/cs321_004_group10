@@ -1,0 +1,5 @@
+Chapter 1: Foundations of Software Testing
+Unit testing verifies that individual components behave as expected in isolation.
+
+Chapter 2: File-Based Test Fixtures
+Storing sample text in dedicated test-files directories keeps test classes clean and maintainable.

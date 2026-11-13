@@ -5,7 +5,7 @@ import java.util.regex.*;
 
 public class DefinitionMatcher  {
 
-    public Map<String, String> matchDefinitions(List<Sting> concepts, String text)  {
+    public Map<String, String> matchDefinitions(List<String> concepts, String text)  {
 
         Map<String, String> vocabulary = new LinkedHashMap<>();
 
