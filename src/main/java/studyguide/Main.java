@@ -54,7 +54,7 @@ public class Main {
 
         CourseMaterial material = null;
 
-        // Optional: java studyguide.Main path/to/file.txt
+        // Optional: java studyguide.Main path/to/notes.txt
         if (args.length > 0) {
             material = loadFromFile(args[0], MaterialType.LECTURE_NOTES);
         }
@@ -171,10 +171,10 @@ public class Main {
         while (true) {
             System.out.println("\nWhat would you like to load?");
             System.out.println("1. Built-in sample notes (OOP)");
-            System.out.println("2. Textbook (.txt or .pdf file)");
-            System.out.println("3. Class notes (.txt or .pdf file)");
-            System.out.println("4. Lecture slides (.txt or .pdf file)");
-            System.out.println("5. Previous test (.txt or .pdf file)");
+            System.out.println("2. Textbook (.txt file)");
+            System.out.println("3. Class notes (.txt file)");
+            System.out.println("4. Lecture slides (.txt file)");
+            System.out.println("5. Previous test (.txt file)");
             System.out.print("Choose an option: ");
 
             String choice = IN.nextLine().trim();
@@ -194,7 +194,7 @@ public class Main {
                     continue;
             }
 
-            System.out.print("Enter file path: ");
+            System.out.print("Enter path to .txt file: ");
             String path = IN.nextLine().trim().replaceAll("^\"|\"$", ""); // strips quotes from "Copy as path"
             CourseMaterial loaded = loadFromFile(path, type);
             if (loaded != null) {
@@ -205,6 +205,21 @@ public class Main {
     }
 
     private static CourseMaterial loadFromFile(String path, MaterialType type) {
+        // PDF-SUPPORT (turned off for the demo): to go back to PDF-only, delete the .txt check
+        // below and uncomment this one.
+        // if (path == null || !path.toLowerCase().endsWith(".pdf")) {
+        //     System.out.println("Only PDF files are supported (the path must end in .pdf).");
+        //     return null;
+        // }
+        if (path == null || !path.toLowerCase().endsWith(".txt")) {
+            System.out.println("Only .txt files are supported right now (the path must end in .txt).");
+            return null;
+        }
+        if (!java.nio.file.Files.isRegularFile(java.nio.file.Path.of(path))) {
+            System.out.println("File not found: " + path);
+            return null;
+        }
+
         try {
             String text = new MaterialParser().parse(path);
             String title = fileNameWithoutExtension(path);
@@ -227,14 +242,17 @@ public class Main {
             }
 
             if (!material.isValid()) {
-                System.out.println("That file doesn't contain usable text.");
+                System.out.println("That file doesn't contain any readable text.");
                 return null;
             }
             System.out.println("Loaded \"" + title + "\" successfully.");
             return material;
 
         } catch (IOException e) {
-            System.out.println("Could not read file: " + e.getMessage());
+            System.out.println("Could not read that file.");
+            return null;
+        } catch (java.nio.file.InvalidPathException e) {
+            System.out.println("That doesn't look like a valid file path.");
             return null;
         }
     }
