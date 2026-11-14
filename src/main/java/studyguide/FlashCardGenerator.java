@@ -132,7 +132,7 @@ public class FlashCardGenerator {
             return;
         }
 
-        flashCards.removeIf(card -> card == null || card.get("question") == null || card.get("answer") || card.get("answer").isBlank);
+        flashCards.removeIf(card -> card == null || card.get("question") == null || card.get("answer") == null || card.get("answer").isBlank());
 
         Scanner scanner = new Scanner(System.in);
         
