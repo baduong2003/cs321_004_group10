@@ -26,7 +26,7 @@ public class DefinitionMatcher  {
     private String findDefinition(String concept, String[] lines)   {
         String escapedConcept = Pattern.quote(concept);
 
-        Pattern directDefinition = Pattern.compile("^\\s*" + escapedConcept + "^\\s*[:\\---]\\s*(.+)$", Pattern.CASE_INSENSITIVE);
+        Pattern directDefinition = Pattern.compile("^\\s*" + escapedConcept + "\\s*[:\\---]\\s*(.+)$", Pattern.CASE_INSENSITIVE);
 
         Pattern sentenceDefinition = Pattern.compile("^\\s*" + escapedConcept + "\\s+(?:is\\s+defined\\s+as|is|are|refers\\s+to|means|describes)\\s+(.+)$", Pattern.CASE_INSENSITIVE);
 

@@ -14,6 +14,7 @@ public class Main {
 //            MaterialParser parser = new MaterialParser();
 //            ConceptIdentifier identifier = new ConceptIdentifier();
 //            DefinitionMatcher matcher = new DefinitionMatcher();
+//            FlashCardGenerator flashCardGenerator = new FlashCardGenerator();
 //
 //            //Load & Extract Textbook
 //            Book book = parser.parseBook(".txt");
@@ -30,6 +31,12 @@ public class Main {
 //            for (String concept : concepts) {
 //                System.out.println("- " + concept);
 //            }
+//
+//            //Generate FlashCards
+//            List<Map<String, String>> flashCards = flashCardGenerator.generate(material);
+//
+//            //Display Flashcard Session
+//            flashCardGenerator.displayFlashCards(flashCards);
 //
 //        } catch (IOException e) {
 //            System.out.println("Error reading study material: " + e.getMessage());
