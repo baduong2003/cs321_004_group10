@@ -1,25 +1,43 @@
 Operating systems are essential software systems that manage computer hardware and software resources.
 An operating system manages processes, memory, storage, and input and output devices.
 Operating systems allow applications to communicate with computer hardware through system calls.
-
+ 
 Process management is an important responsibility of operating systems.
 The operating system manages processes by scheduling them for execution.
 Process scheduling determines which process receives access to the CPU.
 Processes may be created, terminated, blocked, or moved between different scheduling states.
-
+ 
 Memory management controls how memory is allocated to different processes.
 Virtual memory allows operating systems to use secondary storage when physical memory is limited.
 Memory protection prevents one process from accessing another process's memory without permission.
-
+ 
 File systems organize information stored on storage devices.
 The operating system manages files, directories, permissions, and available storage space.
 File systems allow users and applications to create, read, write, and delete files.
-
+ 
 Concurrency occurs when multiple processes make progress during overlapping periods.
 Synchronization helps coordinate processes that share resources.
 Operating systems use locks, semaphores, and condition variables to manage synchronization.
 Deadlocks can occur when processes wait indefinitely for resources held by other processes.
-
+ 
 Security is another important function of operating systems.
 Operating systems manage user permissions and control access to system resources.
 Protection mechanisms help prevent unauthorized access to files, memory, and hardware.
+ 
+Key Terms
+Process: an instance of a program that is currently being executed by the operating system.
+Processes: programs in execution, each with its own memory space and state.
+Memory: the hardware where a computer keeps the data and instructions that are currently in use.
+Storage: long-term hardware, such as a disk, where files and data are kept when not in use.
+Scheduling: the method the operating system uses to decide which process gets the CPU next.
+Resources: the CPU, memory, storage, and devices that processes need in order to run.
+Files: named collections of data that the operating system stores and organizes on a storage device.
+Hardware: the physical components of a computer system.
+Access: the ability to read, write, or use a file, device, or other resource.
+Systems: organized sets of software or hardware components that work together.
+System: a set of connected software or hardware parts that work together as a whole.
+Computer: an electronic machine that processes data by following stored instructions.
+Software: programs and instructions that tell computer hardware what to do.
+Data: information that a computer stores, processes, and moves between components.
+Devices: hardware components, such as disks, keyboards, and displays, that a computer uses for input, output, or storage.
+File: a named collection of data stored on a storage device.

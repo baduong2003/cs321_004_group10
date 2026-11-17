@@ -18,34 +18,15 @@ import java.util.Scanner;
  */
 public class Main {
 
-    // Built-in sample so the demo works even if no file is available.
-    // Each key term appears 3+ times (ConceptIdentifier's default threshold)
-    // and has a "Term: definition" line (what DefinitionMatcher looks for).
-    private static final String SAMPLE_NOTES =
-            "OOP Study Guide\n"
-            + "Object: an instance of a class that holds its own data and behavior.\n"
-            + "Methods: functions defined inside a class that describe what its objects can do.\n"
-            + "Classes: blueprints that define the fields and methods an object will have.\n"
-            + "Every object is created from a class, and each object keeps its own state.\n"
-            + "Objects interact by calling each other's methods.\n"
-            + "\n"
-            + "Encapsulation: bundling data and the methods that operate on it inside one class.\n"
-            + "Encapsulation protects an object's internal state from outside interference.\n"
-            + "Good encapsulation means other classes use public methods instead of touching fields directly.\n"
-            + "\n"
-            + "Inheritance: a mechanism where a subclass acquires the fields and methods of a superclass.\n"
-            + "Inheritance promotes code reuse across related classes.\n"
-            + "A subclass can override methods it gets through inheritance.\n"
-            + "\n"
-            + "Polymorphism: the ability of one interface to be used with many different underlying types.\n"
-            + "Polymorphism lets a single method call behave differently depending on the object.\n"
-            + "Overriding is a common way to achieve polymorphism in Java.\n"
-            + "\n"
-            + "Abstraction: hiding complex implementation details and exposing only what is necessary.\n"
-            + "Abstraction is often achieved with abstract classes and interfaces.\n"
-            + "Abstraction keeps programmers focused on what an object does, not how it does it.\n";
+    private static final String TEST_FILES_DIR = "test-files";
+    private static final String NO_DEFINITION = "Definition not found";
 
     private static final Scanner IN = new Scanner(System.in);
+
+    // Materials the user has finished a quiz on this session (file path -> title).
+    // These are what the "Previous test" option offers.
+    private static final java.util.LinkedHashMap<String, String> COMPLETED = new java.util.LinkedHashMap<>();
+    private static String currentPath = null; // file the current material was loaded from
 
     public static void main(String[] args) {
         System.out.println("==========================================");
@@ -59,7 +40,7 @@ public class Main {
             material = loadFromFile(args[0], MaterialType.LECTURE_NOTES);
         }
         if (material == null) {
-            material = chooseMaterial();
+            material = chooseMaterial(false);
         }
 
         ConceptIdentifier identifier = new ConceptIdentifier();
@@ -74,7 +55,7 @@ public class Main {
             System.out.println("------------------------------------------");
             System.out.println("1. Show vocabulary list (terms + definitions)");
             System.out.println("2. Show key-concept bullet points");
-            System.out.println("3. Start flashcard quiz");
+            System.out.println("3. Start study session (review, then flashcard quiz)");
             System.out.println("4. Load different material");
             System.out.println("5. Change minimum term frequency (currently "
                     + identifier.getMinFrequency() + ")");
@@ -91,10 +72,10 @@ public class Main {
                     showBullets(material, bulletGenerator);
                     break;
                 case "3":
-                    runFlashcards(material, flashCardGenerator);
+                    runStudySession(material, identifier, matcher, bulletGenerator, flashCardGenerator);
                     break;
                 case "4":
-                    CourseMaterial next = chooseMaterial();
+                    CourseMaterial next = chooseMaterial(true);
                     if (next != null) {
                         material = next;
                     }
@@ -129,25 +110,103 @@ public class Main {
 
         Map<String, String> vocab = matcher.matchDefinitions(concepts, text);
 
-        System.out.println("\n===== VOCABULARY (" + vocab.size() + " terms) =====");
+        // Only show terms that actually have a definition in the source material.
+        int shown = 0;
+        int skipped = 0;
+        StringBuilder out = new StringBuilder();
         for (Map.Entry<String, String> entry : vocab.entrySet()) {
-            System.out.println("\n" + capitalize(entry.getKey()));
-            System.out.println("   " + entry.getValue());
+            String definition = entry.getValue();
+            if (definition == null || definition.isBlank() || definition.startsWith(NO_DEFINITION)) {
+                skipped++;
+                continue;
+            }
+            shown++;
+            out.append("\n").append(capitalize(entry.getKey())).append("\n");
+            out.append("   ").append(definition).append("\n");
+        }
+
+        if (shown == 0) {
+            System.out.println("\nFound " + vocab.size() + " frequent terms, but none have a definition in this "
+                    + "material.\nDefinitions need a line like \"Term: definition\" or \"Term is ...\".");
+            return;
+        }
+
+        System.out.println("\n===== VOCABULARY (" + shown + " terms) =====");
+        System.out.print(out);
+        if (skipped > 0) {
+            System.out.println("\n(" + skipped + " other frequent term" + (skipped == 1 ? "" : "s")
+                    + " left out: no definition found in the material.)");
         }
     }
 
     private static void showBullets(CourseMaterial material, BulletPointGenerator generator) {
         System.out.println("\n===== KEY CONCEPTS =====");
-        System.out.println(generator.generateFormattedBulletString(material));
+        // "\u2022" (bullet) shows as "?" in some Windows consoles, so use a plain dash
+        String raw = generator.generateFormattedBulletString(material).replace("\u2022", "-");
+        System.out.println(cleanBullets(raw));
     }
 
-    private static void runFlashcards(CourseMaterial material, FlashCardGenerator generator) {
-        List<Map<String, String>> cards = generator.generate(material);
+    /**
+     * Tidies bullet lines built from "Term: definition" source lines:
+     *  - "- Methods: Methods: functions..." becomes "- Methods: functions..."
+     *  - "- Computer: Memory: the hardware..." (a definition of a different term) is dropped.
+     */
+    private static String cleanBullets(String bullets) {
+        StringBuilder out = new StringBuilder();
+        for (String line : bullets.split("\\R")) {
+            if (line.startsWith("- ")) {
+                String body = line.substring(2);
+                int firstColon = body.indexOf(": ");
+                if (firstColon > 0) {
+                    String label = body.substring(0, firstColon);
+                    String rest = body.substring(firstColon + 2);
+                    java.util.regex.Matcher m =
+                            java.util.regex.Pattern.compile("^([A-Za-z][A-Za-z ]*): (.+)$").matcher(rest);
+                    if (m.matches()) {
+                        if (m.group(1).equalsIgnoreCase(label)) {
+                            line = "- " + label + ": " + m.group(2);   // same term repeated: collapse
+                        } else {
+                            continue;                                  // someone else's definition: skip
+                        }
+                    }
+                }
+            }
+            if (out.length() > 0) {
+                out.append("\n");
+            }
+            out.append(line);
+        }
+        return out.toString();
+    }
+
+    /** Review (vocabulary + bullets) first, then the flashcard quiz. */
+    private static void runStudySession(CourseMaterial material, ConceptIdentifier identifier,
+                                        DefinitionMatcher matcher, BulletPointGenerator bulletGenerator,
+                                        FlashCardGenerator flashCardGenerator) {
+        List<Map<String, String>> cards = flashCardGenerator.generate(material);
         if (cards.isEmpty()) {
             System.out.println("\nNo flashcards could be made (no terms with definitions found).");
+            System.out.println("Tip: definitions are found on lines like \"Term: definition\" or \"Term is ...\".");
             return;
         }
-        generator.displayFlashCards(cards);
+
+        System.out.print("\nReview the vocabulary and key concepts before the quiz? (Y/n): ");
+        String answer = IN.nextLine().trim().toLowerCase();
+        if (!answer.equals("n") && !answer.equals("no")) {
+            showVocabulary(material, identifier, matcher);
+            System.out.print("\nPress ENTER to see the key concepts...");
+            IN.nextLine();
+            showBullets(material, bulletGenerator);
+            System.out.print("\nPress ENTER to start the quiz...");
+            IN.nextLine();
+        }
+
+        flashCardGenerator.displayFlashCards(cards);
+
+        // Quiz finished: remember it so it can be reopened under "Previous test"
+        if (currentPath != null) {
+            COMPLETED.put(currentPath, material.getTitle());
+        }
     }
 
     private static void changeFrequency(ConceptIdentifier identifier) {
@@ -167,41 +226,122 @@ public class Main {
     // Loading material
     // ---------------------------------------------------------------
 
-    private static CourseMaterial chooseMaterial() {
+    private static CourseMaterial chooseMaterial(boolean allowBack) {
         while (true) {
             System.out.println("\nWhat would you like to load?");
-            System.out.println("1. Built-in sample notes (OOP)");
-            System.out.println("2. Textbook (.txt file)");
-            System.out.println("3. Class notes (.txt file)");
-            System.out.println("4. Lecture slides (.txt file)");
-            System.out.println("5. Previous test (.txt file)");
+            System.out.println("1. Textbook (.txt file)");
+            System.out.println("2. Class notes (.txt file)");
+            System.out.println("3. Lecture slides (.txt file)");
+            System.out.println("4. Previous test (a quiz you've already completed)");
+            if (allowBack) {
+                System.out.println("0. Back to menu");
+            }
             System.out.print("Choose an option: ");
 
             String choice = IN.nextLine().trim();
 
-            if (choice.equals("1")) {
-                return new CourseMaterial(new ClassNote("OOP Sample Notes", SAMPLE_NOTES));
+            if (choice.equals("0") && allowBack) {
+                return null;
+            }
+
+            if (choice.equals("4")) {
+                CourseMaterial previous = loadPreviousTest();
+                if (previous != null) {
+                    return previous;
+                }
+                continue;
             }
 
             MaterialType type;
             switch (choice) {
-                case "2": type = MaterialType.BOOK; break;
-                case "3": type = MaterialType.LECTURE_NOTES; break;
-                case "4": type = MaterialType.LECTURE_SLIDES; break;
-                case "5": type = MaterialType.PRIOR_TEST; break;
+                case "1": type = MaterialType.BOOK; break;
+                case "2": type = MaterialType.LECTURE_NOTES; break;
+                case "3": type = MaterialType.LECTURE_SLIDES; break;
                 default:
                     System.out.println("Invalid option.");
                     continue;
             }
 
-            System.out.print("Enter path to .txt file: ");
-            String path = IN.nextLine().trim().replaceAll("^\"|\"$", ""); // strips quotes from "Copy as path"
+            String path = askForFile();
             CourseMaterial loaded = loadFromFile(path, type);
             if (loaded != null) {
                 return loaded;
             }
             // loadFromFile already printed the error; loop and let them retry
         }
+    }
+
+    /**
+     * "Previous test" = a material the user has already finished a quiz on.
+     * Nothing completed yet -> say so. One completed -> open it automatically.
+     */
+    private static CourseMaterial loadPreviousTest() {
+        if (COMPLETED.isEmpty()) {
+            System.out.println("\nNo previous tests yet. Finish a study session first and it will show up here.");
+            return null;
+        }
+
+        List<String> paths = new java.util.ArrayList<>(COMPLETED.keySet());
+        String chosen;
+
+        if (paths.size() == 1) {
+            chosen = paths.get(0);
+            System.out.println("\nOpening your previous test: " + COMPLETED.get(chosen));
+        } else {
+            System.out.println("\nPrevious tests:");
+            for (int i = 0; i < paths.size(); i++) {
+                System.out.println("  " + (i + 1) + ". " + COMPLETED.get(paths.get(i)));
+            }
+            System.out.print("Enter a number: ");
+            try {
+                int n = Integer.parseInt(IN.nextLine().trim());
+                if (n < 1 || n > paths.size()) {
+                    System.out.println("Invalid choice.");
+                    return null;
+                }
+                chosen = paths.get(n - 1);
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid choice.");
+                return null;
+            }
+        }
+
+        return loadFromFile(chosen, MaterialType.PRIOR_TEST);
+    }
+
+    /** Lists .txt files in the test-files folder to pick from by number, or lets the user type a path. */
+    private static String askForFile() {
+        List<String> found = new java.util.ArrayList<>();
+        java.io.File[] files = new java.io.File(TEST_FILES_DIR).listFiles();
+        if (files != null) {
+            java.util.Arrays.sort(files);
+            for (java.io.File f : files) {
+                if (f.isFile() && f.getName().toLowerCase().endsWith(".txt")) {
+                    found.add(TEST_FILES_DIR + "/" + f.getName());
+                }
+            }
+        }
+
+        if (!found.isEmpty()) {
+            System.out.println("\nFiles in " + TEST_FILES_DIR + "/:");
+            for (int i = 0; i < found.size(); i++) {
+                System.out.println("  " + (i + 1) + ". " + found.get(i).substring(TEST_FILES_DIR.length() + 1));
+            }
+            System.out.print("Enter a number, or type the path to a .txt file: ");
+        } else {
+            System.out.print("Enter path to .txt file: ");
+        }
+
+        String input = IN.nextLine().trim().replaceAll("^\"|\"$", ""); // strips quotes from "Copy as path"
+        try {
+            int n = Integer.parseInt(input);
+            if (n >= 1 && n <= found.size()) {
+                return found.get(n - 1);
+            }
+        } catch (NumberFormatException ignored) {
+            // not a number, so treat it as a path
+        }
+        return input;
     }
 
     private static CourseMaterial loadFromFile(String path, MaterialType type) {
@@ -245,7 +385,9 @@ public class Main {
                 System.out.println("That file doesn't contain any readable text.");
                 return null;
             }
+            currentPath = path;
             System.out.println("Loaded \"" + title + "\" successfully.");
+            System.out.println("Tip: definitions are found on lines like \"Term: definition\" or \"Term is ...\".");
             return material;
 
         } catch (IOException e) {
