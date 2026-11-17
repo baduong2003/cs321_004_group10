@@ -4,25 +4,37 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-// PDF-SUPPORT (turned off for the demo): uncomment these 3 imports to bring PDF reading back
-// import org.apache.pdfbox.Loader;
-// import org.apache.pdfbox.pdmodel.PDDocument;
-// import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 
 public class MaterialParser {
 
+    /**
+     * Reads a PDF and returns clean text, ready to be combined with other materials.
+     * Only PDF files are supported (project constraint).
+     *
+     * @throws IOException if the file is not a PDF, can't be read, or is password-protected
+     */
     public String parse(String filePath) throws IOException {
+        if (filePath == null || !filePath.toLowerCase().endsWith(".pdf")) {
+            throw new IOException("Only PDF files are supported: " + filePath);
+        }
+
         Path path = Path.of(filePath);
+        if (!Files.isRegularFile(path)) {
+            throw new IOException("File not found: " + filePath);
+        }
 
-        // PDF-SUPPORT (turned off for the demo): uncomment this block to bring PDF reading back
-        // if (filePath.toLowerCase().endsWith(".pdf")) {
-        //     try (PDDocument document = Loader.loadPDF(path.toFile())) {
-        //         PDFTextStripper stripper = new PDFTextStripper();
-        //         return unwrapLines(stripper.getText(document));
-        //     }
-        // }
-
-        return Files.readString(path);
+        try (PDDocument document = Loader.loadPDF(path.toFile())) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setPageEnd("\f"); // lets TextNormalizer see page boundaries (headers/footers)
+            // Returns "" for scanned/image-only PDFs (no selectable text); callers check for that.
+            return TextNormalizer.normalize(stripper.getText(document), true);
+        } catch (IOException e) {
+            throw new IOException("Could not read " + path.getFileName()
+                    + " - it may be corrupted or password-protected.", e);
+        }
     }
 
     /**
