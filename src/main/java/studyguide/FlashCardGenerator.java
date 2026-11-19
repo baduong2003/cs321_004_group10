@@ -101,26 +101,62 @@ public class FlashCardGenerator {
             return false;
         }
 
+        Set<String> stopWords = new HashSet<>(Arrays.asList("the", "and", "that", "this", "from", "with", "into", "are", "is", "of", "a", "an", "to"));
+
         Set<String> correctWords = new HashSet<>(Arrays.asList(correctAnswer.toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+")));
 
         Set<String> studentWords = new HashSet<>(Arrays.asList(studentAnswer.toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+")));
 
-        Set<String> stopWords = new HashSet<>(Arrays.asList("the", "and", "that", "this", "from", "with", "into", "are", "is", "of", "a", "an", "to"));
-
         correctWords.removeAll(stopWords);
         studentWords.removeAll(stopWords);
 
-        int totalKeywords = correctWords.size();
+        //int totalKeywords = correctWords.size();
 
-        if(totalKeywords == 0)  {
+        if(correctWords.isEmpty())  {
             return studentAnswer.trim().equalsIgnoreCase(correctAnswer.trim());
         }
 
-        correctWords.retainAll(studentWords);
+        int matchedWords = 0;
 
-        double matchPercentage = (double) correctWords.size() / totalKeywords;
+        for(String correctWord : correctWords)  {
+            for(String studentWord : studentWords)  {
+                if(correctWord.equals(studentWord)) {
+                    matchedWords++;
+                    break;
+                }
+
+                if(correctWord.length() >= 5 && studentWord.length() >= 5 && forgivenessDistance(correctWord, studentWord) <= 1)   {
+                    matchedWords++;
+                    break;
+                }
+            }
+        }
+
+        double matchPercentage = (double) matchedWords / correctWords.size();
 
         return matchPercentage >= 0.50;
+    }
+
+    private int forgivenessDistance(String first, String second)    {
+        int[][] distance = new int[first.length() + 1][second.length() + 1];
+
+        for(int i = 0; i <= first.length(); i++)    {
+            distance[i][0] = 1;
+        }
+
+        for(int j = 0; j <= second.length(); j++)   {
+            distance[0][j] = j;
+        }
+
+        for(int i = 1; i <= first.length(); i++)    {
+            for(int j = 1; j <= second.length(); j++) {
+                int cost = first.charAt(i - 1) == second.charAt(j - 1) ? 0 : 1;
+
+                distance[i][j] = Math.min(Math.min(distance[i - 1][j] + 1, distance[i - 1][j - 1] + cost), distance[i][j-1] + 1);
+            }
+        }
+
+        return distance[first.length()][second.length()];
     }
 
     /**
@@ -205,5 +241,7 @@ public class FlashCardGenerator {
         }
         
         System.out.println("\nTotal Flashcards: " + flashCards.size());
+
+        scanner.close();
     }
 }
