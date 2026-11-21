@@ -92,41 +92,22 @@ public class FlashCardGenerator {
         }
     }
 
-    private boolean checkAnswer(String studentAnswer, String correctAnswer) {
-        if(correctAnswer == null || correctAnswer.isBlank())    {
-            throw new IllegalArgumentException("Cannot evaluate a flaschcard without a correct answer.");
-        }
-        
-        if(studentAnswer == null || studentAnswer.isBlank())    {
-            return false;
-        }
-
-        Set<String> correctWords = new HashSet<>(Arrays.asList(correctAnswer.toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+")));
-
-        Set<String> studentWords = new HashSet<>(Arrays.asList(studentAnswer.toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+")));
-
-        Set<String> stopWords = new HashSet<>(Arrays.asList("the", "and", "that", "this", "from", "with", "into", "are", "is", "of", "a", "an", "to"));
-
-        correctWords.removeAll(stopWords);
-        studentWords.removeAll(stopWords);
-
-        int totalKeywords = correctWords.size();
-
-        if(totalKeywords == 0)  {
-            return studentAnswer.trim().equalsIgnoreCase(correctAnswer.trim());
-        }
-
-        correctWords.retainAll(studentWords);
-
-        double matchPercentage = (double) correctWords.size() / totalKeywords;
-
-        return matchPercentage >= 0.50;
-    }
-
     /**
      * Generated FlashCard Display
      */
+    // Only used by the no-argument version below. It is a field, not a local variable, and System.in must stay
+    // open for the rest of the program, so it is never closed.
+    private static final Scanner KEYBOARD = new Scanner(System.in);
+
     public void displayFlashCards(List<Map<String, String>> flashCards) {
+        displayFlashCards(flashCards, KEYBOARD);
+    }
+
+    /**
+     * Same quiz, but reads answers from the caller's Scanner, so the whole program shares ONE Scanner on the
+     * keyboard. The caller owns the Scanner and closes it, if ever, when the program ends.
+     */
+    public void displayFlashCards(List<Map<String, String>> flashCards, Scanner scanner) {
         if(flashCards == null || flashCards.isEmpty())  {
             System.out.println("No flashcards available.");
             return;
@@ -134,14 +115,13 @@ public class FlashCardGenerator {
 
         flashCards.removeIf(card -> card == null || card.get("question") == null || card.get("answer") == null || card.get("answer").isBlank());
 
-        Scanner scanner = new Scanner(System.in);
-        
         List<Map<String, String>> correctPile = new ArrayList<>();
         List<Map<String, String>> incorrectPile = new ArrayList<>();
 
         System.out.println("\n===== GENERATED FLASHCARDS INCOMING =====");
 
         int count = 1;
+        int closenessTotal = 0;
         
         for(Map<String, String> card : flashCards)  {
             System.out.println("\n===== LOCK IN ======");
@@ -159,11 +139,24 @@ public class FlashCardGenerator {
             System.out.println("\nCORRECT ANSWER: ");
             System.out.println(correctAnswer);
 
-            if(checkAnswer(studentAnswer, correctAnswer))   {
+            AnswerGrader.Result grade = AnswerGrader.grade(studentAnswer, correctAnswer);
+            closenessTotal += grade.getPercent();
+
+            System.out.println("\nYour answer covered " + grade.getPercent() + "% of the key words.");
+
+            if(grade.isCredited())   {
                 System.out.println("\nWOOHOO YOU GOT IT RIGHT");
                 correctPile.add(card);
             } else  {
-                System.out.println("\nWOMP WOMP, c'mon try harder");
+                if(grade.isClose()) {
+                    System.out.println("\nSO CLOSE! You need " + (int) Math.round(AnswerGrader.CREDIT_THRESHOLD * 100)
+                            + "% for credit.");
+                } else  {
+                    System.out.println("\nWOMP WOMP, c'mon try harder");
+                }
+                if(!grade.getMissedKeywords().isEmpty())    {
+                    System.out.println("Missing: " + String.join(", ", grade.getMissedKeywords()));
+                }
                 incorrectPile.add(card);
             }
 
@@ -196,6 +189,7 @@ public class FlashCardGenerator {
         }
 
         System.out.printf("Incorrect Percentage: %.2f%%%n", incorrectPercentage);
+        System.out.printf("Average closeness to the correct answers: %.0f%%%n", (double) closenessTotal / totalCards);
 
         System.out.println("\n===== STUDY THESE MORE BEFORE YOU TRY AGAIN =====");
         
@@ -205,5 +199,6 @@ public class FlashCardGenerator {
         }
         
         System.out.println("\nTotal Flashcards: " + flashCards.size());
+
     }
 }

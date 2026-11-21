@@ -27,6 +27,7 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("==========================================");
         System.out.println("          STUDY GUIDE GENERATOR           ");
+        System.out.println("  [build: graded quiz + key-fact bullets]");
         System.out.println("==========================================");
         System.out.println("Load your textbook, notes and slides (PDF) and");
         System.out.println("we'll build the vocabulary and flashcards for you.");
@@ -190,7 +191,7 @@ public class Main {
             IN.nextLine();
         }
 
-        flashCardGenerator.displayFlashCards(cards);
+        flashCardGenerator.displayFlashCards(cards, IN);
     }
 
     private static void manageMaterials(StudyGuideBuilder builder) {
