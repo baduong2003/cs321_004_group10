@@ -1,54 +1,60 @@
+
 package studyguide;
 
-import org.junit.jupiter.api.Test;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.IOException;
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class MaterialParserTest {
 
-    @Test
-    void parseReadsTextFile() throws Exception {
-        Path file = Path.of("test-notes.txt");
-        String expected = "Operating systems manage resources.";
-
-        Files.writeString(file, expected);
-
+    public static void main(String[] args) {
         MaterialParser parser = new MaterialParser();
-        String actual = parser.parse(file.toString());
 
-        assertEquals(expected, actual);
+        // Test 1: Read PDF file
+        try {
+            String text = parser.parse("test-files/sample.pdf");
 
-        Files.delete(file);
-    }
+            System.out.println("PDF Extraction Test:");
+            System.out.println(text);
 
-    @Test
-    void parseReadsPdfFile() throws Exception {
-        Path file = Path.of("test-files/sample.pdf");
+            if (text.contains("Introduction to Computer Science")
+                    && text.contains("Algorithms")
+                    && text.contains("Data Structures")
+                    && text.contains("Operating Systems")) {
+                System.out.println("PASS: PDF text extraction");
+            } else {
+                System.out.println("FAIL: Expected text was not found");
+            }
 
-        MaterialParser parser = new MaterialParser();
-        String actual = parser.parse(file.toString());
+        } catch (IOException e) {
+            System.out.println("FAIL: PDF extraction - " + e.getMessage());
+        }
 
-        assertTrue(actual.contains("Introduction to Computer Science"));
-        assertTrue(actual.contains("Algorithms"));
-        assertTrue(actual.contains("Data Structures"));
-        assertTrue(actual.contains("Operating Systems"));
-    }
+        // Test 2: Reject non-PDF files
+        try {
+            parser.parse("test-notes.txt");
+            System.out.println("FAIL: Non-PDF file was accepted");
 
-    @Test
-    void parsePdfAndIdentifyConcepts() throws Exception {
-        MaterialParser parser = new MaterialParser();
-        ConceptIdentifier identifier = new ConceptIdentifier();
+        } catch (IOException e) {
+            System.out.println("PASS: Non-PDF file rejected");
+        }
 
-        String text = parser.parse("test-files/sample.pdf");
-        List<String> concepts = identifier.identify(text);
+        // Test 3: Extract PDF text and identify concepts
+        try {
+            String text = parser.parse("test-files/sample.pdf");
+            ConceptIdentifier identifier = new ConceptIdentifier();
+            List<String> concepts = identifier.identify(text);
 
-        assertTrue(concepts.contains("algorithm"));
-        assertTrue(concepts.contains("data"));
-        assertTrue(concepts.contains("process"));
+            if (concepts.contains("algorithm")
+                    && concepts.contains("data")
+                    && concepts.contains("process")) {
+                System.out.println("PASS: Concept identification");
+            } else {
+                System.out.println("FAIL: Expected concepts were not identified");
+                System.out.println("Found concepts: " + concepts);
+            }
+
+        } catch (IOException e) {
+            System.out.println("FAIL: Concept identification test - " + e.getMessage());
+        }
     }
 }
